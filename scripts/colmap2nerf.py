@@ -33,6 +33,7 @@ def parse_args():
 	parser.add_argument("--aabb_scale", default=16, choices=["1","2","4","8","16"], help="large scene scale factor. 1=scene fits in unit cube; power of 2 up to 16")
 	parser.add_argument("--skip_early", default=0, help="skip this many images from the start")
 	parser.add_argument("--out", default="transforms.json", help="output path")
+	parser.add_argument("--camera", default="OPENCV", help="COLMAP camera model")
 	args = parser.parse_args()
 	return args
 
@@ -60,6 +61,7 @@ def run_ffmpeg(args):
 	do_system(f"ffmpeg -i {video} -qscale:v 1 -qmin 1 -vf \"fps={fps}\" {images}/%04d.jpg")
 
 def run_colmap(args):
+	camera=args.camera
 	db=args.colmap_db
 	images=args.images
 	db_noext=str(Path(db).with_suffix(""))
@@ -73,7 +75,7 @@ def run_colmap(args):
 		sys.exit(1)
 	if os.path.exists(db):
 		os.remove(db)
-	do_system(f"colmap feature_extractor --ImageReader.camera_model OPENCV --ImageReader.single_camera 1 --database_path {db} --image_path {images}")
+	do_system(f"colmap feature_extractor --ImageReader.camera_model {camera} --ImageReader.single_camera 1 --database_path {db} --image_path {images}")
 	do_system(f"colmap {args.colmap_matcher}_matcher --database_path {db}")
 	try:
 		shutil.rmtree(sparse)
@@ -168,7 +170,11 @@ if __name__ == "__main__":
 			p2 = 0
 			cx = w / 2
 			cy = h / 2
-			if (els[1] =="SIMPLE_RADIAL"):
+			if (els[1] =="PINHOLE"):
+				fl_y = float(els[5])
+				cx = float(els[6])
+				cy = float(els[7])
+			elif (els[1] =="SIMPLE_RADIAL"):
 				cx = float(els[5])
 				cy = float(els[6])
 				k1 = float(els[7])
